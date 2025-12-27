@@ -1,18 +1,96 @@
-import axios from "axios";
-import { config } from "../config.js";
 import { safeSendMessage } from "../utils/safeSendMessage.js";
-import { getCommands } from "../services/commandService.js";
+import { commandService } from "../services/commandService.js";
+import { apiService } from "../services/apiService.js";
 import { detailHandler } from "./types/detailHandler.js";
 import { listHandler } from "./types/listHandler.js";
 import { textHandler } from "./types/textHandler.js";
+import { logError } from "../utils/logger.js";
+import { CONSTANTS } from "../constants.js";
 
-let cachedCommands = [];
+class CommandHandler {
+  constructor() {
+    this.handlers = {
+      list: listHandler,
+      detail: detailHandler,
+      text: textHandler
+    };
+  }
+
+  parseCommand(text) {
+    if (!text) return '';
+    
+    return text
+      .trim()
+      .split(" ")[0]      
+      .split("@")[0]      
+      .replace(/^\//, "") 
+      .toLowerCase();     
+  }
+
+  async handleStart(bot, chatId) {
+    return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.WELCOME);
+  }
+
+  async handleHelp(bot, chatId) {
+    const commands = commandService.getCachedCommands();
+    const commandList = commands
+      .map(c => `/${c.command} - ${c.description}`)
+      .join("\n");
+
+    return safeSendMessage(bot, chatId, `*Daftar Perintah:*\n\n${commandList}`);
+  }
+
+  async handleApiCommand(bot, chatId, commandText) {
+    try {
+      const response = await apiService.executeCommand(commandText);
+
+      if (response.status === 404 || !response.data) {
+        return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.UNKNOWN_COMMAND);
+      }
+
+      const responseData = response.data;
+      const handler = this.handlers[responseData.type];
+
+      if (!handler) {
+        return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.UNKNOWN_FORMAT);
+      }
+
+      return await handler(bot, chatId, responseData);
+    } catch (error) {
+      logError("API command error:", error.message);
+      return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.ERROR_PROCESSING);
+    }
+  }
+
+  async handle(bot, msg) {
+    const chatId = msg.chat.id;
+    const commandText = this.parseCommand(msg.text);
+
+    try {
+      switch (commandText) {
+        case 'start':
+          return await this.handleStart(bot, chatId);
+        
+        case 'help':
+          return await this.handleHelp(bot, chatId);
+        
+        default:
+          return await this.handleApiCommand(bot, chatId, commandText);
+      }
+    } catch (error) {
+      logError("Command handler error:", error.message);
+      return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.ERROR_PROCESSING);
+    }
+  }
+}
+
+export const commandHandler = new CommandHandler();
 
 export async function initCommands(bot) {
-  cachedCommands = await getCommands();
-
+  const commands = await commandService.getCommands();
+  
   await bot.setMyCommands(
-    cachedCommands.map(c => ({
+    commands.map(c => ({
       command: c.command,
       description: c.description
     }))
@@ -20,64 +98,5 @@ export async function initCommands(bot) {
 }
 
 export async function handleCommand(bot, msg) {
-  const chatId = msg.chat.id;
-  const rawText = msg.text || "";
-
-  const text = rawText
-    .trim()
-    .toLowerCase()
-    .split(" ")[0]
-    .split("@")[0]
-    .replace("/", "");
-
-  try {
-    // Built-in Telegram only
-    if (text === "start") {
-      return safeSendMessage(
-        bot,
-        chatId,
-        "Selamat datang! Ketik /help untuk daftar perintah."
-      );
-    }
-
-    if (text === "help") {
-      const response = cachedCommands
-        .map(c => `/${c.command} - ${c.description}`)
-        .join("\n");
-
-      return safeSendMessage(bot, chatId, `*Daftar Perintah:*\n${response}`);
-    }
-
-    const res = await axios.get(`${config.apiUrl}/${text}`, {
-      headers: { Authorization: `Bearer ${config.apiKey}` },
-      timeout: 8000,
-      validateStatus: status => status < 500
-    });
-
-    console.log(res.data);
-
-    if (res.status === 404 || !res.data) {
-      return safeSendMessage(bot, chatId, "Perintah tidak dikenal");
-    }
-
-    const responseData = res.data;
-
-    switch (responseData.type) {
-      case "list":
-        return listHandler(bot, chatId, responseData);
-
-      case "detail":
-        return detailHandler(bot, chatId, responseData);
-
-      case "text":
-        return textHandler(bot, chatId, responseData);
-
-      default:
-        return safeSendMessage(bot, chatId, "Format respons tidak dikenali");
-    }
-
-  } catch (err) {
-    console.error("handleCommand error:", err.message);
-    return safeSendMessage(bot, chatId, "Terjadi error saat memproses perintah");
-  }
+  return commandHandler.handle(bot, msg);
 }
