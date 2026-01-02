@@ -1,13 +1,45 @@
-export async function safeSendMessage(bot, chatId, text) {
+import { CONSTANTS } from '../constants.js';
+import { logError } from './logger.js';
+
+function escapeMarkdown(text) {
+  // Escape special Markdown characters untuk Telegram
+  return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+}
+
+export async function safeSendMessage(bot, chatId, text, options = {}, retries = 0) {
   try {
-    await bot.sendMessage(chatId, text);
-  } catch (err) {
-    if (err.response?.body?.error_code === 429) {
-      const retryAfter = err.response.body.parameters.retry_after;
-      console.warn(`Rate limit hit, retry after ${retryAfter}s`);
-      setTimeout(() => safeSendMessage(bot, chatId, text), (retryAfter + 1) * 1000);
-    } else {
-      console.error(err);
+    // Jangan escape jika sudah ada parse_mode atau user set sendiri
+    const shouldEscape = options.parse_mode === 'MarkdownV2' || 
+                        (options.parse_mode === 'Markdown' && !options.disableEscape);
+    
+    const finalText = shouldEscape ? escapeMarkdown(text) : text;
+    
+    return await bot.sendMessage(chatId, finalText, {
+      parse_mode: 'Markdown',
+      ...options
+    });
+  } catch (error) {
+    logError(`Failed to send message to ${chatId}:`, error.message);
+    
+    // Jika error karena parse mode, coba tanpa markdown
+    if (error.message.includes('parse') || error.message.includes('entities')) {
+      try {
+        return await bot.sendMessage(chatId, text, {
+          ...options,
+          parse_mode: undefined
+        });
+      } catch (retryError) {
+        logError(`Retry without markdown failed:`, retryError.message);
+      }
     }
+    
+    if (retries < CONSTANTS.MESSAGE.MAX_RETRIES) {
+      await new Promise(resolve => 
+        setTimeout(resolve, CONSTANTS.MESSAGE.RETRY_DELAY * (retries + 1))
+      );
+      return safeSendMessage(bot, chatId, text, options, retries + 1);
+    }
+    
+    throw error;
   }
 }

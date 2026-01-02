@@ -1,37 +1,82 @@
-// services/commandService.js
 import axios from "axios";
 import { config } from "../config.js";
 import { logInfo, logError } from "../utils/logger.js";
+import { validators, ValidationError } from "../utils/validation.js";
+import { CONSTANTS } from "../constants.js";
 
-const MAX_COMMANDS = 100; 
+class CommandService {
+  constructor() {
+    this.cachedCommands = [];
+    this.lastFetch = null;
+  }
 
-export async function getCommands() {
-  try {
-    const res = await axios.get(`${config.apiUrl}/command`, {
-      headers: { Authorization: `Bearer ${config.apiKey}` },
-    });
+  async fetchCommands() {
+    try {
+      const response = await axios.get(`${config.apiUrl}/command`, {
+        headers: { Authorization: `Bearer ${config.apiKey}` },
+        timeout: CONSTANTS.API.TIMEOUT
+      });
 
-    if (!res.data || !Array.isArray(res.data)) {
-      throw new Error("Response dari API tidak valid (bukan array).");
+      if (!validators.isValidArray(response.data)) {
+        throw new ValidationError("Response dari API tidak valid (bukan array).");
+      }
+
+      return response.data;
+    } catch (error) {
+      logError("Failed to fetch commands from API:", error.message);
+      throw error;
     }
-    console.log(res.data);
+  }
 
-    // sanitasi data 
-    const cleanData = res.data
-      .filter(c => typeof c.command === "string" && typeof c.description === "string")
+  sanitizeCommands(commands) {
+    return commands
+      .filter(c => 
+        validators.isValidCommand(c.command) && 
+        validators.isValidDescription(c.description)
+      )
       .map(c => ({
-        command: c.command.replace(/[^\w\d_-]/g, ""), 
-        description: c.description.slice(0, 256),
+        command: validators.sanitizeCommand(c.command),
+        description: validators.truncateText(
+          c.description, 
+          CONSTANTS.API.MAX_DESCRIPTION_LENGTH
+        ),
         target_table: c.target_table,
         target_column: c.target_column
       }))
-      .slice(0, MAX_COMMANDS);
+      .slice(0, CONSTANTS.API.MAX_COMMANDS);
+  }
 
-    logInfo(`Commands refreshed from API (${cleanData.length} commands)`);
-    return cleanData;
+  async getCommands(forceRefresh = false) {
+    const cacheAge = this.lastFetch ? Date.now() - this.lastFetch : Infinity;
+    const cacheExpired = cacheAge > 5 * 60 * 1000; // 5 minutes
 
-  } catch (err) {
-    logError("Gagal mengambil commands:", err.message);
-    throw new Error("Tidak dapat memuat commands dari API.");
+    if (!forceRefresh && this.cachedCommands.length > 0 && !cacheExpired) {
+      return this.cachedCommands;
+    }
+
+    try {
+      const rawCommands = await this.fetchCommands();
+      this.cachedCommands = this.sanitizeCommands(rawCommands);
+      this.lastFetch = Date.now();
+      
+      logInfo(`Commands refreshed from API (${this.cachedCommands.length} commands)`);
+      return this.cachedCommands;
+    } catch (error) {
+      logError("Failed to get commands:", error.message);
+      
+      // Return cached if available
+      if (this.cachedCommands.length > 0) {
+        logInfo("Returning cached commands due to fetch failure");
+        return this.cachedCommands;
+      }
+      
+      throw new Error("Tidak dapat memuat commands dari API.");
+    }
+  }
+
+  getCachedCommands() {
+    return this.cachedCommands;
   }
 }
+
+export const commandService = new CommandService();

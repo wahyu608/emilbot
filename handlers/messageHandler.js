@@ -1,4 +1,7 @@
-export function handleMessage(bot, msg) {
+import { safeSendMessage } from "../utils/safeSendMessage.js";
+import { CONSTANTS } from "../constants.js";
+
+export async function handleMessage(bot, msg) {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, "Halo! Ketik /help untuk melihat daftar perintah 👋");
+  return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.GREETING);
 }
