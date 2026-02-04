@@ -8,10 +8,11 @@ function requiredEnv(name) {
   return value;
 }
 
-export default {
+export const config = {
   botToken: requiredEnv("BOT_TOKEN"),
   webhookUrl: requiredEnv("WEBHOOK_URL"),
   apiUrl: requiredEnv("API_URL"),
   apiKey: requiredEnv("API_KEY"),
   port: process.env.PORT ? Number(process.env.PORT) : 3000,
 };
+
