@@ -9,7 +9,6 @@ const router = express.Router();
 export default function syncRoutes(bot) {
   router.post("/sync-commands", async (req, res) => {
     try {
-      // Force refresh commands from API
       await commandService.getCommands(true);
       await initCommands(bot);
       
@@ -17,18 +16,18 @@ export default function syncRoutes(bot) {
         menu_button: { type: "commands" }
       });
       
-      logInfo("Bot commands successfully synchronized!");
+      logInfo("Bot commands berhasil di sinkron!");
       
       res.status(200).json({ 
         success: true, 
-        message: "Commands synchronized successfully",
+        message: "Commands berhasil disinkronisasi",
         count: commandService.getCachedCommands().length
       });
     } catch (error) {
-      logError("Failed to sync commands:", error.message);
+      logError("gagal untuk sinkronisasi command", error.message);
       res.status(500).json({ 
         success: false, 
-        message: "Failed to synchronize commands",
+        message: "Gagal untuk sinkronisasi command",
         error: error.message
       });
     }

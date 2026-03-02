@@ -47,7 +47,6 @@ class RateLimiter {
   canProcess(chatId) {
     const now = Date.now();
     
-    // Check if blocked
     if (this.blockedUsers.has(chatId) && now < this.blockedUsers.get(chatId)) {
       return false;
     }
@@ -56,18 +55,17 @@ class RateLimiter {
     const timeSinceLastMsg = now - last;
     
     if (timeSinceLastMsg > CONSTANTS.RATE_LIMIT.MIN_INTERVAL) {
-      // Message interval OK, allow and reset spam count
       this.userLastTime.set(chatId, now);
       this.userSpamCount.set(chatId, 0);
       return true;
     }
 
-    // Too fast! Increment spam count
-    this.userLastTime.set(chatId, now); // Update last time juga
+    
+    this.userLastTime.set(chatId, now); 
     const count = (this.userSpamCount.get(chatId) || 0) + 1;
     this.userSpamCount.set(chatId, count);
 
-    // Block user if threshold reached
+    
     if (count >= CONSTANTS.RATE_LIMIT.SPAM_THRESHOLD) {
       this.blockedUsers.set(chatId, now + CONSTANTS.RATE_LIMIT.BLOCK_TIME);
       logInfo(`User ${chatId} blocked for spamming (${count} violations)`);

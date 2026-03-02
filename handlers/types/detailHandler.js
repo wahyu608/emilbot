@@ -22,7 +22,7 @@ export async function detailHandler(bot, chatId, data) {
     try {
       return await bot.sendPhoto(chatId, data.photo, { caption });
     } catch (error) {
-      // Fallback to text if photo fails
+      // Jika gagal, kirim tanpa foto
       return safeSendMessage(bot, chatId, caption);
     }
   }
