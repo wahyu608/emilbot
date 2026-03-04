@@ -1,3 +1,7 @@
+import dotenv from "dotenv";
+
+dotenv.config();
+
 function requiredEnv(name) {
   const value = process.env[name];
 
@@ -11,7 +15,7 @@ function requiredEnv(name) {
 export const config = {
   botToken: requiredEnv("BOT_TOKEN"),
   webhookUrl: requiredEnv("WEBHOOK_URL"),
-   apiUrl: process.env.API_URL || "https://admin-bot-topaz.vercel.app/api/api",
+  apiUrl: requiredEnv("API_URL"),
   apiKey: requiredEnv("API_KEY"),
   port: process.env.PORT ? Number(process.env.PORT) : 3000,
 };

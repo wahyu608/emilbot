@@ -33,11 +33,12 @@ class CommandHandler {
 
   async handleHelp(bot, chatId) {
     const commands = commandService.getCachedCommands();
+
     const commandList = commands
       .map(c => `/${c.command} - ${c.description}`)
       .join("\n");
 
-    return safeSendMessage(bot, chatId, `*Daftar Perintah:*\n\n${commandList}`);
+    safeSendMessage(bot, chatId, `Daftar Perintah:\n\n${commandList}`);
   }
 
   async handleApiCommand(bot, chatId, commandText) {

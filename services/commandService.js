@@ -14,7 +14,6 @@ class CommandService {
     try {
       const response = await axios.get(`${config.apiUrl}/command`, {
         headers: { Authorization: `Bearer ${config.apiKey}` },
-        timeout: CONSTANTS.API.TIMEOUT
       });
 
       if (!validators.isValidArray(response.data)) {
