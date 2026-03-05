@@ -34,7 +34,7 @@ export async function listHandler(bot, chatId, data) {
       const name = titleCase(cmd.name ?? cmd.description ?? "");
       const escapedName = escapeMarkdown(name);
 
-      return `${i + idx + 1}. ${escapedName} → ${command}`;
+      return `${i + idx + 1}. ${escapedName}\nDetail: ${command}`;
     });
 
     const header =
