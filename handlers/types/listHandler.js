@@ -2,7 +2,7 @@ import { safeSendMessage } from "../../utils/safeSendMessage.js";
 import { CONSTANTS } from "../../constants.js";
 
 function escapeMarkdown(text = "") {
-  return text.toString().replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
+  return text.toString().replace(/([_*\[\]()~`>#+\-=|{}!\\])/g, "\\$1");
 }
 
 function titleCase(text = "") {
