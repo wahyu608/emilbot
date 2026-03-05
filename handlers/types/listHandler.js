@@ -7,9 +7,11 @@ function escapeMarkdown(text = "") {
 
 function titleCase(text = "") {
   return text
-    .toLowerCase()
     .split(" ")
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map(word => {
+      if (word === word.toUpperCase()) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
     .join(" ");
 }
 
