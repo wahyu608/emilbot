@@ -60,6 +60,7 @@ class CommandHandler {
       }
 
       const responseData = response.data;
+      console.log("API response data:", responseData);
       const handler = this.handlers[responseData.type];
 
       if (!handler) {
