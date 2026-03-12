@@ -21,7 +21,7 @@ class CommandService {
         throw new ValidationError("Response dari API tidak valid (bukan array).");
       }
 
-      return response.data;
+      return response.data.data;
 
     } catch (error) {
 
