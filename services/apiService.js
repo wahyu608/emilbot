@@ -21,7 +21,7 @@ class ApiService {
       });
 
       logDebug(`API response for ${commandText}:`, response.data);
-      return response.data;
+      return response;
     } catch (error) {
       logError(`API request failed for ${commandText}:`, error.message);
       throw error;
