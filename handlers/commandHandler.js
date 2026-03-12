@@ -67,7 +67,7 @@ class CommandHandler {
     } catch (error) {
         logError("API command error:", error.message);
 
-        if (error.message === "SERVICE_DOWN") {
+        if (error.code === "ECONNREFUSED" || error.code === "ENOTFOUND") {
           return safeSendMessage(
             bot,
             chatId,
@@ -75,7 +75,7 @@ class CommandHandler {
           );
         }
 
-        if (error.message === "SERVICE_TIMEOUT") {
+        if (error.code === "ETIMEDOUT" || error.code === "ECONNABORTED") {
           return safeSendMessage(
             bot,
             chatId,
