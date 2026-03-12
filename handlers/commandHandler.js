@@ -52,8 +52,11 @@ class CommandHandler {
     try {
       const response = await apiService.executeCommand(commandText);
 
-      if (response.status === 404 || !response.data) {
-        return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.UNKNOWN_COMMAND);
+      if (!response.data?.success) {
+        if (response.data?.error === "command_not_found") {
+          return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.UNKNOWN_COMMAND);
+        }
+        return safeSendMessage(bot, chatId, "Terjadi kesalahan pada server, silakan coba lagi nanti.");
       }
 
       const responseData = response.data;
