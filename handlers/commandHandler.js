@@ -16,15 +16,17 @@ class CommandHandler {
     };
   }
 
-  parseCommand(text) {
-    if (!text) return '';
-    
-    return text
+    parseCommand(text) {
+    if (!text) return null;
+
+    const command = text
       .trim()
-      .split(" ")[0]      
-      .split("@")[0]      
-      .replace(/^\//, "") 
-      .toLowerCase();     
+      .split(" ")[0]
+      .split("@")[0]
+      .replace(/^\/+/, "")  
+      .toLowerCase();
+
+    return command || null;
   }
 
   async handleStart(bot, chatId) {
