@@ -65,23 +65,12 @@ class CommandHandler {
 
       return await handler(bot, chatId, responseData);
     } catch (error) {
-        logError("API command error:", error.message);
-
-        if (error.code === "ECONNREFUSED" || error.code === "ENOTFOUND") {
-          return safeSendMessage(
-            bot,
-            chatId,
-            "Layanan sedang tidak tersedia. Silakan coba lagi nanti."
-          );
-        }
-
-        if (error.code === "ETIMEDOUT" || error.code === "ECONNABORTED") {
-          return safeSendMessage(
-            bot,
-            chatId,
-            "Server sedang lambat merespons. Silakan coba beberapa saat lagi."
-          );
-        }
+        logError("API command error:", {
+          message: error.message,
+          code: error.code,
+          status: error.response?.status,
+          data: error.response?.data
+        });
 
         return safeSendMessage(
           bot,
