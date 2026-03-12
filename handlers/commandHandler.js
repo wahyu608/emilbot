@@ -6,6 +6,7 @@ import { listHandler } from "./types/listHandler.js";
 import { textHandler } from "./types/textHandler.js";
 import { logError } from "../utils/logger.js";
 import { CONSTANTS } from "../constants.js";
+import { validators } from "../utils/validation.js";
 
 class CommandHandler {
   constructor() {
@@ -17,17 +18,21 @@ class CommandHandler {
   }
 
     parseCommand(text) {
-    if (!text) return null;
+      if (!text) return null;
 
-    const command = text
-      .trim()
-      .split(" ")[0]
-      .split("@")[0]
-      .replace(/^\/+/, "")  
-      .toLowerCase();
+      const rawCommand = text
+        .trim()
+        .split(" ")[0]
+        .split("@")[0];
 
-    return command || null;
-  }
+      const command = validators.sanitizeCommand(rawCommand);
+
+      if (!validators.isValidCommand(command)) {
+        return null;
+      }
+
+      return command;
+    }
 
   async handleStart(bot, chatId) {
     return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.WELCOME);
