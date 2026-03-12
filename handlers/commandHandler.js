@@ -65,19 +65,50 @@ class CommandHandler {
 
       return await handler(bot, chatId, responseData);
     } catch (error) {
-        logError("API command error:", {
-          message: error.message,
-          code: error.code,
-          status: error.response?.status,
-          data: error.response?.data
-        });
+        logError("API command error:", error.message);
+
+        const status = error.response?.status;
+
+        // timeout / server lambat
+        if (
+          error.code === "ETIMEDOUT" ||
+          error.code === "ECONNABORTED" ||
+          status === 504
+        ) {
+          return safeSendMessage(
+            bot,
+            chatId,
+            "Server sedang lambat merespons. Silakan coba beberapa saat lagi."
+          );
+        }
+
+        // server error
+        if (status && status >= 500) {
+          return safeSendMessage(
+            bot,
+            chatId,
+            "Layanan sedang tidak tersedia. Silakan coba lagi nanti."
+          );
+        }
+
+        // network error
+        if (
+          error.code === "ECONNREFUSED" ||
+          error.code === "ENOTFOUND"
+        ) {
+          return safeSendMessage(
+            bot,
+            chatId,
+            "Tidak dapat terhubung ke server layanan."
+          );
+        }
 
         return safeSendMessage(
           bot,
           chatId,
           CONSTANTS.MESSAGES.ERROR_PROCESSING
         );
-      }
+      } 
   }
 
   async handle(bot, msg) {
