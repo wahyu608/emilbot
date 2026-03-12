@@ -65,9 +65,30 @@ class CommandHandler {
 
       return await handler(bot, chatId, responseData);
     } catch (error) {
-      logError("API command error:", error.message);
-      return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.ERROR_PROCESSING);
-    }
+        logError("API command error:", error.message);
+
+        if (error.message === "SERVICE_DOWN") {
+          return safeSendMessage(
+            bot,
+            chatId,
+            "Layanan sedang tidak tersedia. Silakan coba lagi nanti."
+          );
+        }
+
+        if (error.message === "SERVICE_TIMEOUT") {
+          return safeSendMessage(
+            bot,
+            chatId,
+            "Server sedang lambat merespons. Silakan coba beberapa saat lagi."
+          );
+        }
+
+        return safeSendMessage(
+          bot,
+          chatId,
+          CONSTANTS.MESSAGES.ERROR_PROCESSING
+        );
+      }
   }
 
   async handle(bot, msg) {
@@ -94,16 +115,34 @@ class CommandHandler {
 
 export const commandHandler = new CommandHandler();
 
-export async function initCommands(bot) {
-  const commands = await commandService.getCommands();
-  
-  await bot.setMyCommands(
-    commands.map(c => ({
-      command: c.command,
-      description: c.description
-    }))
-  );
-}
+  export async function initCommands(bot) {
+    try {
+
+      const commands = await commandService.getCommands();
+
+      await bot.setMyCommands(
+        commands.map(c => ({
+          command: c.command,
+          description: c.description
+        }))
+      );
+
+      logInfo("Bot commands berhasil dimuat.");
+
+    } catch (error) {
+
+      logError("Gagal memuat commands saat startup:", error.message);
+
+      if (error.message === "SERVICE_DOWN") {
+        logError("API tidak dapat diakses saat startup.");
+      }
+
+      if (error.message === "SERVICE_TIMEOUT") {
+        logError("API terlalu lambat merespons saat startup.");
+      }
+
+    }
+  }
 
 export async function handleCommand(bot, msg) {
   return commandHandler.handle(bot, msg);

@@ -14,6 +14,7 @@ class CommandService {
     try {
       const response = await axios.get(`${config.apiUrl}/command`, {
         headers: { Authorization: `Bearer ${config.apiKey}` },
+        timeout: 5000
       });
 
       if (!validators.isValidArray(response.data)) {
@@ -21,8 +22,25 @@ class CommandService {
       }
 
       return response.data;
+
     } catch (error) {
+
       logError("Failed to fetch commands from API:", error.message);
+
+      if (
+        error.code === "ECONNREFUSED" ||
+        error.code === "ENOTFOUND"
+      ) {
+        throw new Error("SERVICE_DOWN");
+      }
+
+      if (
+        error.code === "ETIMEDOUT" ||
+        error.code === "ECONNABORTED"
+      ) {
+        throw new Error("SERVICE_TIMEOUT");
+      }
+
       throw error;
     }
   }
