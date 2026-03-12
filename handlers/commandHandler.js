@@ -59,8 +59,7 @@ class CommandHandler {
         return safeSendMessage(bot, chatId, "Terjadi kesalahan pada server, silakan coba lagi nanti.");
       }
 
-      const responseData = response.data;
-      console.log("API response data:", responseData);
+      const responseData = response.data.data;
       const handler = this.handlers[responseData.type];
 
       if (!handler) {
