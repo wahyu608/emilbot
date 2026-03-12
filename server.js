@@ -40,7 +40,7 @@ class TelegramBotServer {
         lastRequest.count++;
         this.webhookRequestCount.set(chatId, lastRequest);
         
-        // Jika lebih dari 10 request per detik, langsung tolak
+        // Jika lebih dari 10 request per detik, tolak
         if (lastRequest.count > 10) {
           logWarn(`Extreme spam detected from ${chatId}: ${lastRequest.count} req/sec`);
           return res.sendStatus(429); // Too Many Requests
@@ -96,9 +96,9 @@ class TelegramBotServer {
       const msg = update.message;
       const chatId = msg.chat.id;
 
-      // Rate limiting - Block check
+      // Rate limiting
       if (rateLimiter.isBlocked(chatId)) {
-        // Kirim warning sekali saja
+        // Kirim warning sekali 
         if (!this.alreadyWarned.has(chatId)) {
           const timeLeft = rateLimiter.getBlockTimeLeft(chatId);
           
@@ -110,7 +110,7 @@ class TelegramBotServer {
           
           this.alreadyWarned.set(chatId, warningMsg.message_id);
           
-          // Auto-delete warning message dan clear map setelah block habis
+          // otomatis delete warning message dan clear map setelah block habis
           setTimeout(async () => {
             try {
               await this.bot.deleteMessage(chatId, warningMsg.message_id);
