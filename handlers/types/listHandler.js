@@ -16,36 +16,29 @@ function titleCase(text = "") {
 }
 
 export async function listHandler(bot, chatId, data) {
+
   if (!data?.commands?.length) {
     return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.EMPTY_DATA);
   }
 
-  const messages = [];
-  const batchSize = CONSTANTS.MESSAGE.BATCH_SIZE;
+  const lines = data.commands.map((cmd, idx) => {
 
-  for (let i = 0; i < data.commands.length; i += batchSize) {
-    const batch = data.commands.slice(i, i + batchSize);
+    const command = cmd.command.startsWith("/")
+      ? cmd.command
+      : `/${cmd.command}`;
 
-    const lines = batch.map((cmd, idx) => {
-      const command = cmd.command.startsWith("/")
-        ? cmd.command
-        : `/${cmd.command}`;
+    const name = titleCase(cmd.name ?? cmd.description ?? "");
+    const escapedName = escapeMarkdown(name);
 
-      const name = titleCase(cmd.name ?? cmd.description ?? "");
-      const escapedName = escapeMarkdown(name);
+    return `${idx + 1}. ${escapedName}\nDetail: ${command}`;
 
-      return `${i + idx + 1}. ${escapedName}\nDetail: ${command}`;
-    });
+  });
 
-    const header =
-      i === 0 && data.title
-        ? `*${escapeMarkdown(data.title)}*\n\n`
-        : "";
+  const header = data.title
+    ? `${escapeMarkdown(data.title)}:\n\n`
+    : "";
 
-    messages.push(header + lines.join("\n"));
-  }
+  const message = header + lines.join("\n");
 
-  for (const message of messages) {
-    await safeSendMessage(bot, chatId, message);
-  }
+  return safeSendMessage(bot, chatId, message);
 }

@@ -47,18 +47,16 @@ class CommandService {
 
   sanitizeCommands(commands) {
     return commands
-      .filter(c => 
-        validators.isValidCommand(c.command) && 
+      .filter(c =>
+        validators.isValidCommand(c.command) &&
         validators.isValidDescription(c.description)
       )
       .map(c => ({
         command: validators.sanitizeCommand(c.command),
         description: validators.truncateText(
-          c.description, 
+          c.description,
           CONSTANTS.API.MAX_DESCRIPTION_LENGTH
-        ),
-        target_table: c.target_table,
-        target_column: c.target_column
+        )
       }))
       .slice(0, CONSTANTS.API.MAX_COMMANDS);
   }

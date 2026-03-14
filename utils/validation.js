@@ -7,9 +7,9 @@ export class ValidationError extends Error {
 
 export const validators = {
   isValidCommand(command) {
-    return typeof command === 'string' && 
-           command.length > 0 && 
-           /^[a-z0-9_-]+$/i.test(command);
+    return typeof command === 'string' &&
+          command.length > 0 &&
+          /^[a-z0-9_-]+(\s[a-z0-9_-]+)?$/i.test(command);
   },
 
   isValidDescription(description) {
@@ -22,12 +22,12 @@ export const validators = {
 
   sanitizeCommand(command) {
     if (typeof command !== 'string') return '';
-    // Preserve underscore (_) dan dash (-)
-    // Hanya hilangkan karakter yang BUKAN: a-z, A-Z, 0-9, underscore, dash
+
     return command
-      .replace(/^\/+/, '')           // Hapus leading slashes
-      .replace(/[^a-zA-Z0-9_-]/g, '') // Keep alphanumeric, underscore, dash
-      .toLowerCase();
+      .replace(/^\/+/, '')
+      .replace(/[^a-zA-Z0-9 _-]/g, '')
+      .toLowerCase()
+      .trim();
   },
 
   truncateText(text, maxLength) {

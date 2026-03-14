@@ -6,7 +6,6 @@ import { listHandler } from "./types/listHandler.js";
 import { textHandler } from "./types/textHandler.js";
 import { logError } from "../utils/logger.js";
 import { CONSTANTS } from "../constants.js";
-import { validators } from "../utils/validation.js";
 
 class CommandHandler {
   constructor() {
@@ -17,155 +16,151 @@ class CommandHandler {
     };
   }
 
-    parseCommand(text) {
-      if (!text) return null;
+parseCommand(text) {
 
-      const rawCommand = text
-        .trim()
-        .split(" ")[0]
-        .split("@")[0];
+  if (!text) return null;
 
-      const command = validators.sanitizeCommand(rawCommand);
+  const clean = text.trim().replace(/^\/+/, "").toLowerCase();
 
-      if (!validators.isValidCommand(command)) {
-        return null;
-      }
+  const parts = clean.split(/\s+/);
 
-      return command;
-    }
+  if (parts.length > 2) {
+    return { invalid: true };
+  }
+
+  return {
+    command: parts[0],
+    param: parts[1] || null,
+    full: parts.join(" ")
+  };
+}
 
   async handleStart(bot, chatId) {
     return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.WELCOME);
   }
 
   async handleHelp(bot, chatId) {
+
     const commands = commandService.getCachedCommands();
 
     const commandList = commands
       .map(c => `/${c.command} - ${c.description}`)
       .join("\n");
 
-    safeSendMessage(bot, chatId, `Daftar Perintah:\n\n${commandList}`);
+    return safeSendMessage(bot, chatId, `Daftar Perintah:\n\n${commandList}`);
   }
 
   async handleApiCommand(bot, chatId, commandText) {
+
     try {
+
       const response = await apiService.executeCommand(commandText);
 
       if (!response.data?.success) {
+
         if (response.data?.error === "command_not_found") {
           return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.UNKNOWN_COMMAND);
         }
-        return safeSendMessage(bot, chatId, "Terjadi kesalahan pada server, silakan coba lagi nanti.");
+
+        return safeSendMessage(bot, chatId, "Terjadi kesalahan pada server.");
       }
 
       const responseData = response.data.data;
+
       const handler = this.handlers[responseData.type];
 
       if (!handler) {
         return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.UNKNOWN_FORMAT);
       }
 
-      return await handler(bot, chatId, responseData);
+      return handler(bot, chatId, responseData);
+
     } catch (error) {
         logError("API command error:", error.message);
 
-        const status = error.response?.status;
-
-        // timeout / server lambat
-        if (
-          error.code === "ETIMEDOUT" ||
-          error.code === "ECONNABORTED" ||
-          status === 504
-        ) {
+        if (error.message === "SERVER_ERROR") {
           return safeSendMessage(
             bot,
             chatId,
-            "Server sedang lambat merespons. Silakan coba beberapa saat lagi."
+            "Terjadi kesalahan pada server."
           );
         }
 
-        // server error
-        if (status && status >= 500) {
+        if (error.message === "SERVICE_DOWN") {
           return safeSendMessage(
             bot,
             chatId,
-            "Layanan sedang tidak tersedia. Silakan coba lagi nanti."
+            "Server tidak dapat dihubungi."
           );
         }
 
-        // network error
-        if (
-          error.code === "ECONNREFUSED" ||
-          error.code === "ENOTFOUND"
-        ) {
+        if (error.message === "SERVICE_TIMEOUT") {
           return safeSendMessage(
             bot,
             chatId,
-            "Tidak dapat terhubung ke server layanan."
+            "Server terlalu lama merespons."
           );
         }
 
         return safeSendMessage(
           bot,
           chatId,
-          CONSTANTS.MESSAGES.ERROR_PROCESSING
+          "Terjadi error saat memproses perintah"
         );
-      } 
+      }
   }
 
   async handle(bot, msg) {
-    const chatId = msg.chat.id;
-    const commandText = this.parseCommand(msg.text);
 
-    try {
-      switch (commandText) {
-        case 'start':
-          return await this.handleStart(bot, chatId);
-        
-        case 'help':
-          return await this.handleHelp(bot, chatId);
-        
-        default:
-          return await this.handleApiCommand(bot, chatId, commandText);
-      }
-    } catch (error) {
-      logError("Command handler error:", error.message);
-      return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.ERROR_PROCESSING);
+    const chatId = msg.chat.id;
+
+    const parsed = this.parseCommand(msg.text);
+
+    if (!parsed) {
+      return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.UNKNOWN_COMMAND);
     }
+    const { command, full } = parsed;
+
+      switch (command) {
+
+        case "start":
+          return this.handleStart(bot, chatId);
+
+        case "help":
+          return this.handleHelp(bot, chatId);
+
+        default:
+
+          const commands = commandService.getCachedCommands();
+
+          const exists = commands.find(c => c.command === command);
+
+          if (!exists) {
+            return safeSendMessage(
+              bot,
+              chatId,
+              CONSTANTS.MESSAGES.UNKNOWN_COMMAND
+            );
+          }
+
+          return this.handleApiCommand(bot, chatId, full);
+      }
   }
 }
 
 export const commandHandler = new CommandHandler();
 
-  export async function initCommands(bot) {
-    try {
+export async function initCommands(bot) {
 
-      const commands = await commandService.getCommands();
+  const commands = await commandService.getCommands();
 
-      await bot.setMyCommands(
-        commands.map(c => ({
-          command: c.command,
-          description: c.description
-        }))
-      );
-
-      logInfo("Bot commands berhasil dimuat.");
-
-    } catch (error) {
-
-      logError("Gagal memuat commands saat startup:", error.message);
-
-      if (error.message === "SERVICE_DOWN") {
-        logError("API tidak dapat diakses saat startup.");
-      }
-
-      if (error.message === "SERVICE_TIMEOUT") {
-        logError("API terlalu lambat merespons saat startup.");
-      }
-
-    }
-  }
+  await bot.setMyCommands(
+    commands.map(c => ({
+      command: c.command,
+      description: c.description
+    }))
+  );
+}
 
 export async function handleCommand(bot, msg) {
   return commandHandler.handle(bot, msg);

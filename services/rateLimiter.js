@@ -20,7 +20,6 @@ class RateLimiter {
     const now = Date.now();
     let cleaned = 0;
 
-    // Cleanup blocked users yang sudah expired
     for (const [chatId, unblockTime] of this.blockedUsers.entries()) {
       if (now > unblockTime) {
         this.blockedUsers.delete(chatId);
@@ -29,7 +28,6 @@ class RateLimiter {
       }
     }
 
-    // Cleanup old entries (lebih dari 1 jam tidak aktif)
     const oneHourAgo = now - 60 * 60 * 1000;
     for (const [chatId, lastTime] of this.userLastTime.entries()) {
       if (lastTime < oneHourAgo) {
