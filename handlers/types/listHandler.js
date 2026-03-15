@@ -15,37 +15,38 @@ function titleCase(text = "") {
     .join(" ");
 }
 
-export async function listHandler(bot, chatId, data) {
+export async function listHandler(bot, chatId, data, msg = {}) {
+
   if (!data?.commands?.length) {
     return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.EMPTY_DATA);
   }
 
-  const messages = [];
-  const batchSize = CONSTANTS.MESSAGE.BATCH_SIZE;
+  const keyboard = data.commands.map(cmd => [{
+    text: titleCase(cmd.name ?? cmd.description ?? ""),
+    callback_data: cmd.command.startsWith("/") ? cmd.command : `/${cmd.command}`
+  }]);
 
-  for (let i = 0; i < data.commands.length; i += batchSize) {
-    const batch = data.commands.slice(i, i + batchSize);
+  const title = data.title
+    ? `*${escapeMarkdown(data.title)}*`
+    : "Silakan pilih:";
 
-    const lines = batch.map((cmd, idx) => {
-      const command = cmd.command.startsWith("/")
-        ? cmd.command
-        : `/${cmd.command}`;
+  const options = {
+    parse_mode: "MarkdownV2",
+    reply_markup: { inline_keyboard: keyboard }
+  };
 
-      const name = titleCase(cmd.name ?? cmd.description ?? "");
-      const escapedName = escapeMarkdown(name);
-
-      return `${i + idx + 1}. ${escapedName}\nDetail: ${command}`;
-    });
-
-    const header =
-      i === 0 && data.title
-        ? `*${escapeMarkdown(data.title)}*\n\n`
-        : "";
-
-    messages.push(header + lines.join("\n"));
+  if (msg?.isCallback) {
+    try {
+      return await bot.editMessageText(title, {
+        chat_id: chatId,
+        message_id: msg.message_id,
+        ...options
+      });
+    } catch (err) {
+      // fallback jika sebelumnya photo
+      return bot.sendMessage(chatId, title, options);
+    }
   }
 
-  for (const message of messages) {
-    await safeSendMessage(bot, chatId, message);
-  }
+  return bot.sendMessage(chatId, title, options);
 }

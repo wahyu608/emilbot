@@ -4,7 +4,7 @@ import { apiService } from "../services/apiService.js";
 import { detailHandler } from "./types/detailHandler.js";
 import { listHandler } from "./types/listHandler.js";
 import { textHandler } from "./types/textHandler.js";
-import { logError } from "../utils/logger.js";
+import { logError, logInfo } from "../utils/logger.js";
 import { CONSTANTS } from "../constants.js";
 import { validators } from "../utils/validation.js";
 
@@ -48,7 +48,7 @@ class CommandHandler {
     safeSendMessage(bot, chatId, `Daftar Perintah:\n\n${commandList}`);
   }
 
-  async handleApiCommand(bot, chatId, commandText) {
+  async handleApiCommand(bot, chatId, commandText, msg ) {
     try {
       const response = await apiService.executeCommand(commandText);
 
@@ -66,7 +66,7 @@ class CommandHandler {
         return safeSendMessage(bot, chatId, CONSTANTS.MESSAGES.UNKNOWN_FORMAT);
       }
 
-      return await handler(bot, chatId, responseData);
+      return await handler(bot, chatId, responseData, msg);
     } catch (error) {
         logError("API command error:", error.message);
 
@@ -127,7 +127,7 @@ class CommandHandler {
           return await this.handleHelp(bot, chatId);
         
         default:
-          return await this.handleApiCommand(bot, chatId, commandText);
+          return await this.handleApiCommand(bot, chatId, commandText, msg);
       }
     } catch (error) {
       logError("Command handler error:", error.message);

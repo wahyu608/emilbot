@@ -25,8 +25,10 @@ class TelegramBotServer {
     // Request rate limiting per chatId
     this.webhookRequestCount = new Map();
     this.app.use((req, res, next) => {
-      if (req.path === '/webhook' && req.body?.message) {
-        const chatId = req.body.message.chat.id;
+      if (req.path === '/webhook' && (req.body?.message || req.body?.callback_query)) {
+        const chatId =
+          req.body?.message?.chat?.id ||
+          req.body?.callback_query?.message?.chat?.id;
         const now = Date.now();
         const lastRequest = this.webhookRequestCount.get(chatId) || { time: 0, count: 0 };
         
@@ -43,7 +45,7 @@ class TelegramBotServer {
         // Jika lebih dari 10 request per detik, tolak
         if (lastRequest.count > 10) {
           logWarn(`Extreme spam detected from ${chatId}: ${lastRequest.count} req/sec`);
-          return res.sendStatus(429); // Too Many Requests
+          return res.sendStatus(200); // Too Many Requests
         }
       }
       next();
@@ -88,7 +90,39 @@ class TelegramBotServer {
   async handleWebhook(req, res) {
     try {
       const update = req.body;
-      
+      if (update.callback_query) {
+
+        const query = update.callback_query;
+        const chatId = query.message.chat.id;
+        let command = query.data;
+
+        try {
+          await this.bot.answerCallbackQuery(query.id);
+
+          const isBackButton = command.startsWith("back:");
+
+            if (isBackButton) {
+              try {
+                await this.bot.deleteMessage(chatId, query.message.message_id);
+              } catch (e) {}
+              return res.sendStatus(200); 
+            }
+
+            const fakeMsg = {
+              chat: { id: chatId },
+              text: command
+            };
+
+            console.log("Raw callback:", query.data);
+            console.log("Processed command:", command);
+
+            await handleCommand(this.bot, fakeMsg);
+          } catch (error) {
+            logError("Callback query error:", error);
+          }
+
+        return res.sendStatus(200);
+      }
       if (!update.message) {
         return res.sendStatus(200);
       }
